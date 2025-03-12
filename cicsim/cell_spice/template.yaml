@@ -1,0 +1,27 @@
+
+create:
+  cicsim.yaml: |
+    options:
+      useTmpDir: False
+      sha: True
+    corner:
+      Lay: ''
+      Sch: ''
+    ngspice:
+      library: ${IP}
+      cell: ${CELL}
+
+copy:
+  - tran.spi
+  - tran.py
+  - tran.meas
+  - tran.yaml
+  - Makefile
+  - summary.yaml
+do:
+  - make netlist
+  - git add Makefile cicsim.yaml tran.spi tran.meas tran.py summary.yaml tran.yaml
+
+
+echo: |
+  Good luck with ${IP} ${CELL}

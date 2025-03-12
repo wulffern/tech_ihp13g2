@@ -1,0 +1,98 @@
+#!/usr/bin/perl
+use Term::ANSIColor;
+use strict;
+
+my $cell = shift;
+my $short = shift;
+
+$short =~ s/\s+//ig;
+my $doShort = 0;
+if($short eq "--short"){
+  $doShort = 1;
+}
+
+
+my $ok = 0;
+my $match = 0;
+my $propOk = 1;
+while(<>){
+  if(!$doShort){
+      print $_;
+  }
+
+  if(m/match uniquely/ig){
+    $match = 1;
+  }
+  if(m/the following cells had property errors/ig){
+     $propOk = 0;
+  }
+  if(m/Property errors were found/ig){
+     $propOk = 0;
+  }
+  if(m/failed pin matching/ig){
+     $propOk = 0;
+  }
+  if(m/Final result: Netlists do not match/){
+    $match = 0;
+  }
+  if(m/Final result: Circuits match uniquely/){
+    $match = 1;
+  }
+}
+
+my $message = "";
+if(!$match){
+  $message .= " Warning: Circuits do not match\n";
+}
+
+if(!$propOk){
+  $message .= " Error: Property errors\n";
+}
+
+if(!$match || !$propOk){
+  $message .= " Warning: Check log for details\n";
+}
+
+my $smiley = <<EOF;
+
+##################################
+#                _   _           #
+#                \$   \$           #
+#   CORRECT        |             #
+#                \\___/           #
+#                                #
+##################################
+EOF
+
+my $error = <<EOF;
+##################################
+#                 _   _          #
+#                 x   x          #
+#  INCORRECT        |            #
+#                  ___           #
+#                                #
+##################################
+$message
+EOF
+
+
+my $shortstart = sprintf("%-40s\t[ ",$cell);
+my $shortend = " ]\n";
+
+my $exit = 0;
+if($match && $propOk){
+  if(!$doShort){
+    print($smiley);
+  }else{
+    print($shortstart.color('green').'LVS OK  '.color('reset').$shortend);
+  }
+}else{
+  $exit = 1;
+  if(!$doShort){
+    print($error);
+  }else{
+    print($shortstart.color('red').'LVS FAIL'.color('reset').$shortend)
+  }
+}
+
+exit $exit;

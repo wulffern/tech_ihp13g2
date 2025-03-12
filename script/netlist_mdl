@@ -1,0 +1,16 @@
+#!/usr/bin/perl
+use strict;
+
+my $file = shift;
+my $lib = shift;
+open(my $fh, "<", $file) || die "Could not open $file";
+
+while(<$fh>){
+  if(m/work\/xsch\/(.*)\.v/){
+    my $name = $1;
+    system("make netlist_cell ver LIB=$lib CELL=$name")
+  }
+
+}
+
+close($fh) || die "Could not close $file";

@@ -1,0 +1,65 @@
+#!/usr/bin/perl
+
+use strict;
+
+#- Fix the erroneous port list on flat lpe netlist
+
+my $lpe = shift;
+my $xsch = shift;
+my $cell = shift;
+
+my $fi;
+open($fi,"<","$xsch") or die "Could not open $xsch";
+my $buffer = "";
+my $enable = 0;
+while(<$fi>){
+    if(m/.subckt $cell\s+/){
+        $enable = 1;
+    }
+
+    if(m/\*/ig){
+        $enable = 0;
+    }
+
+    if($enable){
+        $buffer .= $_;
+    }
+}
+close($fi) or die "Could not close $xsch";
+
+
+
+my $outbuff = "";
+my $lpebuff = "";
+my $cktbuff = "";
+my $fo;
+open($fo,"<","$lpe") or die "Could not open $lpe";
+while(<$fo>){
+
+    if($enable && not m/\+/ig){
+        $enable = 0;
+        $outbuff .= "* Replacing the lpe port list (../tech/scripts/fixlpe)\n";
+        $outbuff .= $buffer."";
+        $outbuff .= $cktbuff;
+    }
+
+    if(m/.subckt $cell\s+/){
+        $enable = 1;
+    }
+
+    if($enable){
+        $cktbuff .= "*" . $_;
+    }else{
+        $outbuff .= $_;
+    }
+}
+close($fo) or die "Could not close $lpe";
+
+open($fo,">","$lpe") or die "Could not open $lpe";
+print $fo $outbuff;
+close($fo) or die "Could not close $lpe";
+
+
+print "Replacing port list: ". $cktbuff;
+print "               with: ". $buffer;
+exit 0;

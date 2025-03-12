@@ -1,0 +1,10 @@
+source $env(PDK_ROOT)/ihp-sg13g2/libs.tech/magic/ihp-sg13g2.magicrc
+
+#- Custom macros
+
+macro Shift_XK_Up "move u 1"
+macro Shift_XK_Down "move d 1"
+macro Shift_XK_Left "move l 1"
+macro Shift_XK_Right "move r 1"
+
+source ../tech/magic/cic.tcl

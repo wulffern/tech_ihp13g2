@@ -1,0 +1,189 @@
+
+dirs:
+  - design
+  - design/${IP}
+  - .github
+  - .github/workflows
+  - media
+  - sim
+  - work
+
+create:
+
+  info.yaml: |
+    library: ${IP}
+    cell: ${CELL}
+    # Your name
+    author: Anonymous
+    # Your github username
+    github: analogicus
+    # Something funny and descriptive
+    tagline: The answer is 42
+    # Your email, if you so wish
+    email: anon@anon.com
+    # Your github site, usually <github username>.github.io
+    url: analogicus.github.io
+    doc:
+      # Make docs
+      #libraries:
+      #   <library>:
+      #       - <cell>
+      #       - <cell>
+    sim:
+      # <simdir>: command
+
+  config.yaml: |
+    #- Carsten's PDK. Borders, symbols, loop stability
+    cpdk:
+      remote: git@github.com:wulffern/cpdk.git
+      revision: main
+
+    #- Technology library
+    tech_ihp13g2:
+      remote: git@github.com:wulffern/tech_ihp13g2.git
+      revision: main
+
+  .gitignore: |
+    *.run
+    *.ext
+    __pycache__
+    output_*/
+    archive/
+    *.tcl
+    *.log
+    work/
+    .DS_store
+    *.so
+    *.pdf
+    *.gds
+    .cache
+    .local/
+    build/
+    work/lvs
+    work/gds
+    work/drc
+    work/xsch
+
+  design/${IP}/${CELL}.md: |
+    
+  design/${IP}/${CELL}.sch: |
+    v {xschem version=3.0.0 file_version=1.2 }
+    G {}
+    K {}
+    V {}
+    S {}
+    E {}
+    T {Shift-I          Insert new component
+    Shift-Z         Zoom in
+    Ctrl-Z           Zoom out
+    R                 Rotate
+    F                 Full view
+
+    Manual: https://xschem.sourceforge.io/stefan/xschem_man/xschem_man.pdf
+    } -460 -630 0 0 0.6 0.6 {}
+    C {cborder/border_s.sym} 520 0 0 0 {
+    user="Carsten Wulff"
+    company="Wulff Consulting AS"}
+    C {devices/ipin.sym} -560 -840 0 0 {name=p1 lab=VDD_1V8}
+    C {devices/ipin.sym} -560 30 0 0 {name=p2 lab=VSS}
+    C {devices/ipin.sym} -560 -440 0 0 {name=p3 lab=PWRUP_1V8}
+  work/Makefile: |
+
+    #- Core makefile provides the following commands:
+    # -----------------------------------------------------------
+    # ip: generate ../design/<LIB> from ../cic/ip.json
+    # gds: generate gds/<CELL>.gds
+    # cdl: generate cdl/<CELL>.cdl
+    # xlvs: Check cdl/<CELL>.cdl versus ../design/<LIB>/<CELL>.mag
+    # lpe: Extract parasitics lpe/<CELL>.spi
+    # drc: Run design rule checks on ../design/<LIB>/<CELL>.mag
+    # -----------------------------------------------------------
+
+    PREFIX=
+    LIB=${IP}
+    CELL=${CELL}
+
+    #- Provide cells you want to check for the lvsall drcall commands
+    CELLS = ${CELL}
+
+    include ../tech/make/core.make
+
+  sim/Makefile: |
+    include ../tech/make/sim.make
+
+    LIB=${IP}
+    CELL=${CELL}
+
+
+  work/.magicrc: |
+    source ../tech/magic/.magicrc
+    addpath ../design/${IP}
+
+  work/xschemrc: |
+    source ../tech/xschem/xschemrc
+    append XSCHEM_LIBRARY_PATH :../design
+  README.md: |
+
+
+    # Who
+    ${USER}
+
+    # Why
+
+    <explain why you made this module>
+
+    # How
+
+    <explain short how you made this module>
+
+
+    # What
+
+    <explain what you made>
+
+
+
+
+    # Signal interface
+
+    | Signal    | Direction | Domain  | Description          |
+    |:----------|:---------:|:-------:|:---------------------|
+    | VDD_1V8   | Input     | VDD_1V8 | Main supply          |
+    | VSS       | Input     | Ground  |                      |
+    | PWRUP_1V8 | Input     | VDD_1V8 | Power up the circuit |
+
+
+    # Key parameters
+
+    | Parameter   | Min | Typ             | Max | Unit |
+    |:------------|:---:|:---------------:|:---:|:----:|
+    | Technology  |     | Skywater 130 nm |     |      |
+    | AVDD        | 1.7 | 1.8             | 1.9 | V    |
+    | Temperature | -40 | 27              | 125 | C    |
+
+
+do:
+  - ln -s ../tech_iph13g2 tech
+  - cd work && ln -s ../tech/magic/mos.24bit.dstyle
+  - cd work && ln -s ../tech/magic/mos.24bit.std.cmap
+  - cd sim && ln -s ../tech/cicsim/cicsim.yaml
+#  - cd design && ln -s ../../jnw_tr_sky130a/design/JNW_TR_SKY130A
+#  - cd design && ln -s ../../jnw_atr_sky130a/design/JNW_ATR_SKY130A
+  - git init
+  - git add .
+  - git add -f work/.magicrc
+  - git add -f work/xschemrc
+  - git add -f work/Makefile
+  - git add -f work/mos.24bit.dstyle
+  - git add -f work/mos.24bit.std.cmap
+  - git commit -m "Made ${IP}" -a
+
+
+echo: |
+
+  Actions:
+    1. Create an github repository, and set remote of ${IP}
+    2. cd ${ip}/work/; make xview
+    3. Have fun!
+
+  Good luck with ${IP}.

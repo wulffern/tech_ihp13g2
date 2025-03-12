@@ -1,0 +1,25 @@
+.lib Tt
+.option TEMP=27
+.endl
+
+
+.lib Tm
+.option TEMP=42.4
+.endl
+
+
+.lib Th
+.option TEMP=125
+.endl
+
+.lib Tah
+.option TEMP=105
+.endl
+
+.lib Tnh
+.option TEMP=85
+.endl
+
+.lib Tl
+.option TEMP=-40
+.endl

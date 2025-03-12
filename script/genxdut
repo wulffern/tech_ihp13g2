@@ -1,0 +1,31 @@
+#!/usr/bin/perl
+
+my $file = shift;
+my $name = shift;
+
+open(my $fh, "<", $file) || die "Could not open $file";
+
+my $ports = "";
+my $foundSubckt = 0;
+while(<$fh>){
+
+  if($foundSubckt && m/^\s*\+/){
+    $ports .= $_;
+  }else{
+    $foundSubckt = 0;
+  }
+
+  if(m/^\s*.subckt\s+$name\s+/i){
+    s/\s*.subckt\s+$name\s+//ig;
+    $ports .= $_;
+    $foundSubckt = 1;
+  }
+}
+close($fh) || die "Could not close $file";
+
+$foname = "xdut.spi";
+open(my $fo,">","$foname") || die "Could not open $foname";
+$ports =~ s/\n\s*\+|\n/ /ig;
+print $fo "*Automatic generated instance fron ../../tech/scripts/genxdut $name\n";
+print $fo "XDUT $ports $name\n" ;
+close($fo) || die "Could not close $foname";

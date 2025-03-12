@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+#
+import pandas as pd
+import os
+import sys
+import re
+
+if(len(sys.argv) < 2):
+    print("Usage: checkant <ant.log>")
+    exit()
+
+antlog = sys.argv[1]
+
+
+def parseCell(buff):
+
+    if(len(buff) < 5):
+        return None
+
+    #- Cell: MP0
+    aname = buff[0].split(" ")
+    name = aname[-1]
+
+    #- Antenna violation detected at plane locali
+    alayer = buff[1].split(" ")
+    layer = alayer[-1]
+
+    #- Effective antenna ratio inf > limit 400
+    aratio = buff[2].split(" ")
+    ratio = aratio[-4]
+    limit = aratio[-1]
+
+    #- Gate rect (14050 42668) to (14106 42712)
+    gaterect = buff[3].replace("Gate rect ","").replace(" to ",",")
+
+
+    #- Antenna rect (14366 43448) to (14582 43454)
+    antrect = buff[4].replace("Antenna rect ","").replace(" to ",",")
+
+    data = dict()
+    data["name"] = name
+    data["layer"] = layer
+    data["ratio"] = ratio
+    data["limit"] = limit
+    data["gaterect"] = gaterect
+    data["antrect"] = antrect
+
+    m = re.search(r"\((\d+) (\d+)\),\((\d+) (\d+)\)",gaterect)
+    if(m):
+        arr = m.groups()
+        gwidth = int(arr[2]) - int(arr[0])
+        gheight = int(arr[3]) - int(arr[1])
+        data["gwidth"] = gwidth
+        data["gheight"] = gheight
+
+    return data
+
+
+
+startlog = False
+buff = list()
+errors = list()
+with open(antlog) as fi:
+    for line in fi:
+
+        #- Check if the log has started
+        if( re.search(r"Running antenna checks",line)):
+            startlog = True
+        elif(not startlog):
+            continue
+
+        if(re.search(r"^Cell:",line) or re.search(r"^antennacheck finished",line)):
+            data = parseCell(buff)
+            if(data is not None):
+                errors.append(data)
+            buff.clear()
+            startcell=True
+
+        buff.append(line.replace("\n",""))
+
+
+df = pd.DataFrame(errors)
+foname = antlog.replace(".log",".csv")
+df.to_csv(foname)
+
+s = "s"
+if(len(errors) == 1):
+    s = ""
+
+print(f"Found {len(errors)} error{s}")
+print(f"Errors written to {foname}")

@@ -1,0 +1,133 @@
+#!/usr/bin/perl
+
+use strict;
+use Data::Dumper;
+
+
+
+my @inputs = ();
+my @outputs = ();
+my %ph = {};
+$ph{inputs} = ();
+$ph{outputs} = ();
+
+
+#---------------------------------------------------------------------
+# MAIN
+#---------------------------------------------------------------------
+
+my $file = shift;
+my $name = shift;
+
+open(my $fh, "<", $file) || die "Could not open $file";
+my $ports = "";
+my $foundModule = 0;
+while(<$fh>){
+
+ if(m/;/){
+    $foundModule = 0;
+  }
+
+  if($foundModule){
+        $ports .= $_;
+  }
+
+
+  if(m/^\s*module\s+$name\s*\(/i){
+
+    s/\s*module\s+$name\s*\(//ig;
+    $ports .= $_;
+    $foundModule = 1;
+  }
+}
+close($fh) || die "Could not close $file";
+
+#- Remove comments
+$ports =~ s/\/\/.*\n/\n/ig;
+
+#- Remove newlines and duplicated spaces
+$ports =~ s/\s+/ /ig;
+
+#- Parse ports
+my @p = split(/,/,$ports);
+foreach(@p){
+  #- Trim trailing and initial spaces
+  s/^\s+|\s+$//ig;
+  my @tok = split(/\s+/);
+  my %data = {};
+
+  my $name = $tok[-1];
+  my $dir = $tok[0];
+  my $start = 1;
+  my $stop = 1;
+  if($tok[-2] =~ m/\[(\d+):(\d+)\]/){
+    $start = $1;
+    $stop = $2;
+    for( my $i=$start; $i >= $stop; $i--){
+      if($dir eq "input"){
+        push(@inputs,$name.".".$i);
+      }elsif($dir eq "output"){
+        push(@outputs,$name.".".$i);
+      }else{
+        print("ERROR: unknown direction '$dir' in $_\n")
+     }
+    }
+  }else{
+    if($dir eq "input"){
+      push(@inputs,$name);
+    }elsif($dir eq "output"){
+      push(@outputs,$name);
+    }else{
+      print("ERROR: unknown direction '$dir' in $_\n")
+    }
+  }
+  $data{name} = $name;
+  $data{start} = $start;
+  $data{stop} = $stop;
+  $data{dir} = $dir;
+  if($dir eq "input"){
+    push(@{$ph{inputs}},\%data);
+  }elsif($dir eq "output"){
+    push(@{$ph{outputs}},\%data);
+  }
+
+}
+
+my $foname = "svinst.spi";
+open(my $fo,">","$foname") || die "Could not open $foname";
+print $fo "*Automatic generated instance fron ../../tech/scripts/genxdut $name\n";
+print $fo "adut [".join("\n+ ",@inputs)."\n+ ]\n+ [".join("\n+ ",@outputs)."\n+ ] null dut\n";
+print $fo ".model dut d_cosim simulation=\"../${name}.so\" delay=10p\n";
+my $rind =0;
+
+print $fo "\n* Inputs\n";
+foreach(@inputs){
+  print $fo "Rsvi".$rind." $_ 0 1G\n";
+  $rind++;
+}
+print $fo "\n* Outputs\n";
+foreach(@outputs){
+  print $fo "Rsvi".$rind." $_ 0 1G\n";
+  $rind++;
+}
+
+print $fo "\n";
+
+#- Make observables for buses
+foreach my $data (@{$ph{outputs}}){
+  #print(Dumper($data));
+  if($data->{start} > $data->{stop}){
+    print $fo "E_STATE_".$data->{name}." dec_".$data->{name}." 0 value={( 0 \n";
+    for(my $i=$data->{start};$i >=$data->{stop};$i--){
+      print $fo "+ + ".(2**$i)."*v(".$data->{name}.".$i)/AVDD\n";
+    }
+    print $fo "+)/1000}\n";
+    print $fo ".save v(dec_".$data->{name}.")\n\n";
+  }else{
+    print $fo ".save v(".$data->{name}.")\n\n";
+  }
+}
+
+#$ports =~ s/\n\s*\+|\n/ /ig;
+
+close($fo) || die "Could not close $foname";

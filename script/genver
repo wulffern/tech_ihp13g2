@@ -1,0 +1,93 @@
+#!/usr/bin/perl
+use Data::Dumper;
+use strict;
+my $file = shift;
+my $name = shift;
+
+open(my $fh, "<", $file) || die "Could not open $file";
+
+my @pinlist = ();
+my %info;
+
+
+sub parsePorts{
+  my @ports = split(/\s+/);
+  foreach(@ports){
+    s/\<\d+\>//ig;
+    if(scalar(@pinlist) == 0){
+      push(@pinlist,$_);
+    }elsif($pinlist[-1] ne $_){
+      push(@pinlist,$_);
+    }else{
+      #push(@pins,$_);
+    }
+
+  }
+}
+
+
+my $ss = "";
+
+my $foundSubckt = 0;
+while(<$fh>){
+
+  if($foundSubckt && (m/^\s*\+/ || m/^\s*\*/)){
+    s/\s*\+\s*//ig;
+    if(m/^\s*\*(.[oi]o?pin)\s+(.*)$/){
+      my $dir = $1;
+      my @pins = split(/\s+/,$2);
+
+      my $dirstr = "input  wire ";
+      if($dir eq ".iopin" || $dir eq ".opin"){
+        $dirstr = "output wire ";
+      }
+
+      my $n = $pins[0];
+      $n =~ s/\<\d+\>//ig;
+      my $num = scalar(@pins)-1;
+
+      my %data;
+      $data{dir} = $dirstr;
+      $data{num} = $num;
+      $info{$n} = \%data;
+
+      if($num == 0){
+        $ss .= $dirstr." ${n},\n";
+      }else{
+        $ss .=  $dirstr." [${num}:0] ${n},\n";
+      }
+    }else{
+      parsePorts($_);
+    }
+  }else{
+    $foundSubckt = 0;
+  }
+
+  if(m/^\s*.subckt\s+$name\s+/i){
+    s/\s*.subckt\s+$name\s+//ig;
+    parsePorts($_);
+    $foundSubckt = 1;
+  }
+}
+close($fh) || die "Could not close $file";
+
+$ss =~ s/,$//ig;
+
+my $foname = "${name}.v";
+open(my $fo,">","$foname") || die "Could not open $foname";
+
+print $fo  "module ${name}\n";
+print $fo  "(\n";
+my $ss = "";
+foreach my $pin (@pinlist){
+  if($info{$pin}->{num} > 0){
+    $ss .= $info{$pin}->{dir}." [".$info{$pin}->{num}.":0] ${pin},\n";
+  }else{
+    $ss .= $info{$pin}->{dir}." ${pin},\n";
+  }
+}
+$ss =~ s/.$//ig;
+print $fo $ss;
+print $fo  ");\n\n";
+print $fo  "endmodule\n";
+close($fo) || die "Could not close $foname";

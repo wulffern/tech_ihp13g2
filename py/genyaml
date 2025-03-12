@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+
+import os
+import re
+import sys
+import yaml
+import click
+from dataclasses import *
+
+
+@dataclass
+class Spice(yaml.YAMLObject):
+    includeOnly: bool = False
+    lines: int = 0
+    includeLines: int = 0
+    dirname: str = ""
+    filename: str = ""
+    children: dict = field(default_factory=dict)
+
+    yaml_tag = u'!Spice'
+
+    def parse(self,filename):
+        self.dirname = os.path.dirname(os.path.abspath(filename))
+        self.filename = os.path.abspath(filename)
+        key = "common"
+        includeLines = 0
+        lines = 0
+        with open(self.filename) as fi:
+            for l in fi:
+                if(re.search("^\s*\*",l)):
+                    continue
+
+                lines += 1
+                m = re.search("^\s*\.lib\s+(.*)",l)
+                if(m):
+                    key = m.groups()[0]
+
+                m = re.search("^\s*\.include\s+\"([^\"]+)\"",l)
+                if(m):
+                    s = Spice()
+                    s.parse(os.path.join(self.dirname,m.groups()[0]))
+                    if(key not in self.children):
+                        self.children[key] = list()
+
+                    self.children[key].append(s)
+                    includeLines += 1
+
+
+                m = re.search("^\s*\.endl",l)
+                if(m):
+                    key = "common"
+            if(lines == includeLines):
+                self.includeOnly = True
+        self.lines = lines
+        self.includeLines = includeLines
+
+    def printCorner(self,key: str,rex,replace):
+        if(key in self.children):
+            includes = self.children[key]
+            for inc in includes:
+                if(inc.includeOnly):
+                    inc.printCorner("common",rex,replace)
+                else:
+                    if(rex is None or not rex.search(inc.filename)):
+                        (find,repl) = replace.split("|")
+                        repl = "$" + repl
+                        print(" "*4 + ".include \"" + inc.filename.replace(find,repl) + "\"")
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+@click.argument("yamlfile")
+@click.option("--prefix",default="K")
+@click.option("--exclude",default=None)
+@click.option("--replace",default="/opt/pdk/share/pdk|PDK_ROOT")
+def process(yamlfile,prefix,exclude,replace):
+    with open(yamlfile) as fi:
+        s = yaml.unsafe_load(fi)
+
+    if(exclude):
+        rex = re.compile(exclude)
+    else:
+        rex = None
+
+
+
+    for key in sorted(s.children):
+        nkey = key.replace("_","")
+        print(f"  {prefix}{nkey}: |")
+        if("mm" in nkey):
+            print(" "*4 + ".param mc_mm_switch=1")
+            print(" "*4 + ".param mc_pr_switch=0")
+        elif("mc" in nkey):
+            print(" "*4 + ".param mc_mm_switch=0")
+            print(" "*4 + ".param mc_pr_switch=1")
+        else:
+            print(" "*4 + ".param mc_mm_switch=0")
+            print(" "*4 + ".param mc_pr_switch=0")
+
+
+        s.printCorner(key,rex,replace)
+
+
+
+
+@cli.command()
+@click.argument("filename")
+def parse(filename):
+    s = Spice()
+    s.parse(filename)
+
+    with open("spice.yaml","w") as fo:
+        fo.write(yaml.dump(s))
+
+if __name__ == "__main__":
+    cli()
