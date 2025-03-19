@@ -43,6 +43,14 @@ create:
       remote: git@github.com:wulffern/tech_ihp13g2.git
       revision: main
 
+    lelo_tr_ihp13g2:
+      remote: git@github.com:wulffern/lelo_tr_ihp13g2.git
+      revision: main
+
+    lelo_atr_ihp13g2:
+      remote: git@github.com:wulffern/lelo_atr_ihp13g2.git
+      revision: main
+
   .gitignore: |
     *.run
     *.ext
@@ -163,12 +171,12 @@ create:
 
 
 do:
-  - ln -s ../tech_iph13g2 tech
+  - ln -s ../tech_ihp13g2 tech
   - cd work && ln -s ../tech/magic/mos.24bit.dstyle
   - cd work && ln -s ../tech/magic/mos.24bit.std.cmap
   - cd sim && ln -s ../tech/cicsim/cicsim.yaml
-#  - cd design && ln -s ../../jnw_tr_sky130a/design/JNW_TR_SKY130A
-#  - cd design && ln -s ../../jnw_atr_sky130a/design/JNW_ATR_SKY130A
+  - cd design && ln -s ../../lelo_tr_ihp13g2/design/LELO_TR_IHP13G2
+  - cd design && ln -s ../../lelo_atr_ihp13g2/design/LELO_ATR_IHP13G2
   - git init
   - git add .
   - git add -f work/.magicrc
